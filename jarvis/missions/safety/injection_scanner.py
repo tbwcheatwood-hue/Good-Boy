@@ -127,6 +127,17 @@ INJECTION_PATTERNS: Final[list[tuple[str, re.Pattern[str], InjectionSeverity]]] 
         "med",
     ),
     (
+        "ssh_or_key_exfil",
+        re.compile(
+            # "read the API keys section" is ordinary docs and must not kill a
+            # mission. Only an actual secret-path exfil verb counts.
+            r"(?:export|cat|print|send|upload|exfiltrate)\b[^\n]{0,60}"
+            r"(?:~/?\.ssh\b|id_rsa\b|id_ed25519\b)",
+            re.IGNORECASE,
+        ),
+        "critical",
+    ),
+    (
         "exfil_url",
         re.compile(
             r"(curl|wget|Invoke-WebRequest|fetch\()[^\n]{0,80}"

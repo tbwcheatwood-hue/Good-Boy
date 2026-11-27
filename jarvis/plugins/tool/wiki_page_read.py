@@ -114,7 +114,16 @@ class WikiPageReadTool:
 
         # Reject absolute paths and obvious traversal attempts up front —
         # cleaner error message than relying on the relative-to check.
+        from jarvis.reliability.sandbox import sensitive_relative
+
         candidate = Path(raw_path)
+        if sensitive_relative(candidate):
+            log.info("wiki-page-read: rejected sensitive path: %r", raw_path)
+            return ToolResult(
+                success=False,
+                output="",
+                error="path is a credential location and cannot be read",
+            )
         if candidate.is_absolute() or any(part == ".." for part in candidate.parts):
             log.info("wiki-page-read: rejected non-vault-relative path: %r", raw_path)
             return ToolResult(

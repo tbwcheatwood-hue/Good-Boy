@@ -414,10 +414,19 @@ def deliver_to_user_folder(
             if not files_dir.is_dir():
                 continue
             for path in sorted(files_dir.rglob("*")):
-                if path.is_file() and not is_nondeliverable_scratch(
+                if not path.is_file() or is_nondeliverable_scratch(
                     path.relative_to(files_dir).as_posix()
                 ):
-                    sources.append(path)
+                    continue
+                from jarvis.reliability.artifact_gate import artifact_ok
+
+                ok, why = artifact_ok(path)
+                if not ok:
+                    logger.warning(
+                        "deliverable skipped (not complete): %s — %s", path, why
+                    )
+                    continue
+                sources.append(path)
     except OSError as exc:
         logger.warning("deliver: enumerating %s failed: %s", tasks_root, exc)
         return []

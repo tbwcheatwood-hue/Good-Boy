@@ -1616,6 +1616,9 @@ class Kontrollierer:
         # return EXHAUSTED (the worker was given real feedback and
         # still didn't fix things).
         critic_ok_count = 0
+        from jarvis.reliability.crew import FailureCircuit
+
+        failure_circuit = FailureCircuit(limit=1)
 
         for iteration in range(MAX_CRITIC_LOOPS):
             # Per-iteration: render reflections, spawn worker, capture diff+log
@@ -1960,6 +1963,16 @@ class Kontrollierer:
                 elif (
                     is_timeout or is_transient or is_auth
                 ) and iteration < MAX_CRITIC_LOOPS - 1:
+                    fingerprint = spawn_result.worker_error or kill_reason
+                    if not failure_circuit.allow(fingerprint):
+                        logger.warning(
+                            "Task %s: circuit breaker — %s",
+                            step.task_id,
+                            failure_circuit.escalation_message(fingerprint),
+                        )
+                        if is_timeout:
+                            return TaskOutcome.TIMED_OUT
+                        return TaskOutcome.ERROR
                     logger.warning(
                         "Task %s iter %d: worker %s with no usable output — "
                         "retrying on a fresh spawn%s",

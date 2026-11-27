@@ -11180,6 +11180,23 @@ class SpeechPipeline:
             await _cancel_bounded("Cosmetic PTT probe")
             return
 
+        # A cosmetic in-flight transcription must not sit on the release-to-text
+        # path. When the provider can rebuild a fresh engine, do that now
+        # instead of waiting out the final-STT timeout (AP-24: never share the
+        # engine the preview still holds).
+        recover = getattr(self._utterance_stt, "recover", None)
+        if inference_active.is_set() and callable(recover):
+            try:
+                recover()
+            except Exception:  # noqa: BLE001 — cleanup must never drop teardown
+                log.warning(
+                    "PTT live-transcript STT recovery failed; continuing "
+                    "with provider-level fallback.",
+                    exc_info=True,
+                )
+            await _cancel_bounded("PTT live transcript")
+            return
+
         timed_out = False
         if wait_for_inference:
             try:

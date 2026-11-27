@@ -74,7 +74,9 @@ class UpdateSoulTool:
                 success=False, output=None, error="operation must be add, replace or remove"
             )
         if operation != "remove":
-            reason = refusal(note)
+            from jarvis.reliability.soul_guard import personality_drift
+
+            reason = refusal(note) or personality_drift(note)
             if reason:
                 return ToolResult(success=False, output=None, error=f"note refused: {reason}")
         if operation != "add" and not entry_id:

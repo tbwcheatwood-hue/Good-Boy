@@ -84,7 +84,7 @@ app = typer.Typer(
     cls=_CompatibleRootGroup,
     no_args_is_help=True,
     add_completion=True,
-    help="Control a running Personal Jarvis instance from the terminal.",
+    help="Control a running Good Boy instance from the terminal.",
 )
 
 # Shared state set by the root callback and read by commands.
@@ -131,7 +131,7 @@ def version() -> None:
     """Print the jarvisctl version."""
     from jarvis import __version__
 
-    typer.echo(f"jarvisctl (Personal Jarvis {__version__})")
+    typer.echo(f"jarvisctl (Good Boy {__version__})")
 
 
 @app.command()

@@ -53,6 +53,8 @@ class HardwareReport:
     torch_cuda_available: bool = False
     ffmpeg_version: str | None = None
     existing_installs: dict[str, str] = field(default_factory=dict)
+    telemetry_note: str = ""
+    tokens_per_sec: float | None = None
 
     @property
     def has_nvidia_gpu(self) -> bool:
@@ -91,7 +93,7 @@ def _run(cmd: list[str], timeout: int = 10) -> str:
             creationflags=NO_WINDOW_CREATIONFLAGS,
         )
         return (result.stdout or "") + (result.stderr or "")
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.SubprocessError):
         return ""
 
 
@@ -222,6 +224,9 @@ def analyze() -> HardwareReport:
     cpu_name, cpu_phys, cpu_log = _detect_cpu()
     ram_total, ram_avail = _detect_ram()
 
+    from jarvis.reliability.telemetry import collect_telemetry
+
+    telemetry = collect_telemetry()
     return HardwareReport(
         os_name=platform.system(),
         os_version=platform.version(),
@@ -237,6 +242,8 @@ def analyze() -> HardwareReport:
         torch_cuda_available=_detect_torch_cuda(),
         ffmpeg_version=_detect_ffmpeg(),
         existing_installs=_detect_existing_installs(),
+        telemetry_note=telemetry.note,
+        tokens_per_sec=telemetry.tokens_per_sec,
     )
 
 

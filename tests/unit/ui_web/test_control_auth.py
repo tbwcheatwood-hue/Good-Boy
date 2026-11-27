@@ -132,8 +132,15 @@ def test_bind_safe_allows_loopback_without_key() -> None:
     ca.assert_bind_safe("127.0.0.1", None)  # no raise
 
 
-def test_bind_safe_allows_non_loopback_with_key() -> None:
+def test_bind_safe_allows_non_loopback_with_key_and_explicit_remote(monkeypatch) -> None:
+    monkeypatch.setenv("JARVIS_BIND_HOST", "0.0.0.0")  # noqa: S104 — test input, no real bind
     ca.assert_bind_safe("0.0.0.0", "jctl_realkey")  # noqa: S104 — test input, no real bind
+
+
+def test_bind_safe_refuses_non_loopback_key_without_remote_opt_in(monkeypatch) -> None:
+    monkeypatch.delenv("JARVIS_BIND_HOST", raising=False)
+    with pytest.raises(RuntimeError):
+        ca.assert_bind_safe("0.0.0.0", "jctl_realkey")  # noqa: S104 — test input, no real bind
 
 
 def test_bind_safe_refuses_non_loopback_without_key() -> None:

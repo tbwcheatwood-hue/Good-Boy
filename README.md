@@ -1,4 +1,4 @@
-<h1 align="center">Hue</h1>
+<h1 align="center">Good Boy</h1>
 
 <p align="center">
   <strong>The open-source AI agent super-app for your desktop.</strong><br />
@@ -6,28 +6,28 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/tbwcheatwood-hue/Hue/blob/main/LICENSE"><img alt="Apache 2.0" src="https://img.shields.io/badge/License-Apache_2.0-F7F7F4?labelColor=0A0A0A" /></a>
-  <a href="https://github.com/tbwcheatwood-hue/Hue/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/tbwcheatwood-hue/Hue/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/tbwcheatwood-hue/Good-Boy/blob/main/LICENSE"><img alt="Apache 2.0" src="https://img.shields.io/badge/License-Apache_2.0-F7F7F4?labelColor=0A0A0A" /></a>
+  <a href="https://github.com/tbwcheatwood-hue/Good-Boy/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/tbwcheatwood-hue/Good-Boy/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="https://discord.gg/x7USduHxbc"><img alt="Discord" src="https://img.shields.io/badge/Discord-join-F7F7F4?labelColor=0A0A0A&amp;logo=discord&amp;logoColor=white" /></a>
 </p>
 
 <p align="center">
   <a href="#quick-start">Quick Start</a> ·
   <a href="#features">Features</a> ·
-  <a href="https://github.com/tbwcheatwood-hue/Hue/tree/main/docs">Docs</a> ·
+  <a href="https://github.com/tbwcheatwood-hue/Good-Boy/tree/main/docs">Docs</a> ·
   <a href="https://discord.gg/x7USduHxbc">Discord</a>
 </p>
 
 <p align="center">
-  <img src="assets/hue-architecture.svg" alt="Hue architecture" width="100%"/>
-  <br/><sub>Hue architecture — core engine, Agentic IDE, Jarvis Agents, Voice, Computer Use, Marketplace and Memory.</sub>
+  <img src="assets/hue-architecture.svg" alt="Good Boy architecture" width="100%"/>
+  <br/><sub>Good Boy architecture — core engine, Agentic IDE, agents, voice, computer use, marketplace and memory.</sub>
 </p>
 
 ---
 
-Hue is one desktop app for everything AI can do on a computer. It has a workspace where several coding agents run side by side, AI agents that keep their own memory, a voice assistant with a wake word, control of your desktop and browser, and a plugin marketplace. It works with the models you already pay for, whether hosted, local or through a subscription you have.
+Good Boy is one desktop app for everything AI can do on a computer. It has a workspace where several coding agents run side by side, AI agents that keep their own memory, a voice assistant with a wake word, control of your desktop and browser, and a plugin marketplace. It works with the models you already pay for, whether hosted, local or through a subscription you have.
 
-You say what you want. Hue answers you, does the task on your computer, or hands it to the agent that fits, and you can watch every step.
+You say what you want. Good Boy answers you, does the task on your computer, or hands it to the agent that fits, and you can watch every step.
 
 It is free and open source, and it runs on your own machine. You do not need an account, and there is no cloud of ours between you and your models. It runs on Windows, macOS and Linux, and as a server without a screen.
 

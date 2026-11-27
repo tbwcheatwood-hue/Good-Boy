@@ -20,7 +20,9 @@ from collections.abc import AsyncIterator
 
 import numpy as np
 
+from jarvis.audio.level_tap import playback_active
 from jarvis.audio.wake_normalizer import AdaptiveWakeNormalizer
+from jarvis.reliability.acoustic import effective_wake_threshold
 from jarvis.core.protocols import AudioChunk
 
 log = logging.getLogger("jarvis.wake")
@@ -443,7 +445,10 @@ class OpenWakeWordProvider:
                     if score >= self._score_log_threshold:
                         log.info("wake score  %s = %.3f  (threshold %.2f)",
                                  keyword, score, self._threshold)
-                    if score < self._threshold:
+                    threshold = effective_wake_threshold(
+                        self._threshold, speakers_active=playback_active()
+                    )
+                    if score < threshold:
                         self._suppressed_below_threshold += 1
                         continue
                     # Cleared the FIRE bar — record the attempt before the

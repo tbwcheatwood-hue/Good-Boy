@@ -11,6 +11,37 @@ versioning per [SemVer](https://semver.org/).
 
 ---
 
+## [Good Boy 1.1.0] — 2026-11-27
+
+Phase 2 hardening on the 1.0.0 tree. Working subsystems were not rewritten.
+
+### Fixed
+
+- A local brain (Ollama, LM Studio, llama.cpp, MLX, EXL2) no longer falls through to a paid cloud provider when the local endpoint is loading, rate-limited, or down. Paid fallback requires `allow_paid_fallback` or `GOOD_BOY_ALLOW_PAID_FALLBACK`.
+- Small context windows compact older turns at 85% saturation. System and security-rule messages stay verbatim; dropped turns become one scratchpad note.
+- Malformed tool calls (markdown fences, broken JSON, invented parameter names, partial calls) are repaired deterministically, then retried at most twice before the turn asks the person.
+- Hardware telemetry reports RAM, VRAM, and an optional tokens/sec sample without raising when `nvidia-smi`, `rocm-smi`, or `powermetrics` are missing.
+- Wake-word acceptance raises its score bar while speakers are active, so TTS bleed is less likely to count as a wake without hardware echo cancellation.
+- Ambiguous reminder phrasing ("I should probably check tomorrow") asks for confirmation instead of creating a routine. An explicit "set a reminder" still proceeds.
+- SOUL.md notes that would make the assistant sycophantic or skip a risk tier are refused.
+- Push-to-talk no longer waits out the final-STT timeout on a cosmetic live transcription when the local engine can rebuild a fresh instance.
+- The same crew failure escalates to a person on the second identical retry instead of looping.
+- Worktree removal refuses paths outside the mission sandbox, so a crash cleanup cannot delete unrelated uncommitted work.
+- A deliverable that is missing, empty, or fails a Python/JSON syntax check is not copied out as a completed file.
+- Tool output that says "ignore previous instructions" or asks to export `~/.ssh` or API keys is labeled as data. A follow-up tool call into a secret path is blocked unless the person asked for that path.
+- Wiki reads reject credential locations (`.ssh`, `.aws`, private keys, `.env`) even when they sit inside the vault root.
+- The HTTP listener stays on loopback unless `JARVIS_BIND_HOST` explicitly opts into remote access and a control key is present.
+- Wake-model archives reject members that would write outside the download directory.
+- The injection scanner no longer treats ordinary documentation that says "read the API keys" as a critical exfiltration. Exporting `~/.ssh` or a private key still is.
+- A repaired tool call on the last retry is kept when it is valid.
+- Worktree removal refuses the mission outputs root itself.
+
+### Changed
+
+- Installer welcome text and the README title say Good Boy. Persistent install paths, the keyring service, and `jarvis.toml` are unchanged so existing installs keep their files.
+
+---
+
 ## [3.1.1] — 2026-10-10
 
 ### Fixed

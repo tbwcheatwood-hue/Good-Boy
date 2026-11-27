@@ -180,7 +180,7 @@ $GoldDeep            ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═╝
 
 $Dim     talk to your computer · installs the full profile · launches when done$Rst
 
-$Dim┌$Rst  ${Gold}Personal Jarvis installer$Rst
+$Dim┌$Rst  ${Gold}Good Boy installer$Rst
 "@
     Write-Host $art
 }
@@ -537,7 +537,7 @@ if ($ExtraArgs -contains '--headless') {
 }
 
 # ----------------------------------------------------------------- clone / update
-Write-Phase '2/6' 'Fetching Personal Jarvis'
+Write-Phase '2/6' 'Fetching Good Boy'
 Write-Note $InstallDir
 
 # On an interactive console, git paints its own "Receiving objects: NN%"

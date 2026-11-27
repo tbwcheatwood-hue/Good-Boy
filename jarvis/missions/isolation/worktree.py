@@ -490,6 +490,17 @@ class WorktreeManager:
         ``git worktree prune`` to clean up, because the lean repo was never
         registered there in the first place.
         """
+        from jarvis.reliability.sandbox import path_is_inside
+
+        try:
+            same_as_root = path.resolve() == self._outputs_root.resolve()
+        except OSError:
+            same_as_root = False
+        if same_as_root or not path_is_inside(self._outputs_root, path):
+            raise ValueError(
+                f"refusing to remove {path}: it is outside the mission sandbox "
+                f"{self._outputs_root}"
+            )
         if self._is_lean_workspace(path):
             self._remove_lean(path)
             return

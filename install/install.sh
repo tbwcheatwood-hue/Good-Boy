@@ -173,7 +173,7 @@ ${GOLD_DEEP}            ╚════╝ ╚═╝  ╚═╝╚═╝  ╚═
 
 ${DIM}     talk to your computer · installs the full profile · launches when done${RST}
 
-${DIM}┌${RST}  ${GOLD}Personal Jarvis installer${RST}
+${DIM}┌${RST}  ${GOLD}Good Boy installer${RST}
 EOF
 
 # -------------------------------------------------------------- welcome gate
@@ -199,10 +199,10 @@ ask_welcome() {
         "$GUT" "$GUT" "$DIM" "$RST" > /dev/tty
     while :; do
         if [ "$_sel" -eq 0 ]; then
-            printf '\r%s◆%s  %sWould you like to install Personal Jarvis?%s   %s%s ▸ Yes %s   %s   No  %s' \
+            printf '\r%s◆%s  %sWould you like to install Good Boy?%s   %s%s ▸ Yes %s   %s   No  %s' \
                 "$GOLD" "$RST" "$BOLD" "$RST" "$GOLD" "$REV" "$RST" "$DIM" "$RST" > /dev/tty
         else
-            printf '\r%s◆%s  %sWould you like to install Personal Jarvis?%s   %s   Yes %s   %s%s ▸ No  %s' \
+            printf '\r%s◆%s  %sWould you like to install Good Boy?%s   %s   Yes %s   %s%s ▸ No  %s' \
                 "$GOLD" "$RST" "$BOLD" "$RST" "$DIM" "$RST" "$RED" "$REV" "$RST" > /dev/tty
         fi
         IFS= read -rsn1 _key < /dev/tty || return 0
@@ -872,7 +872,7 @@ else
 fi
 
 # -------------------------------------------------------------- clone / update
-phase '2/6' 'Fetching Personal Jarvis'
+phase '2/6' 'Fetching Good Boy'
 note "$INSTALL_DIR"
 
 # On a terminal, git paints its own "Receiving objects: NN%" progress so a

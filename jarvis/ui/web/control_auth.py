@@ -67,16 +67,29 @@ async def require_control_key_or_session(request: Request) -> None:
     raise HTTPException(**_UNAUTHORIZED)
 
 
-def assert_bind_safe(host: str, key: str | None) -> None:
-    """Fail-closed: refuse a non-loopback bind without a control key.
+def assert_bind_safe(
+    host: str,
+    key: str | None,
+    *,
+    remote_access: bool | None = None,
+) -> None:
+    """Fail-closed: loopback by default.
 
-    On a VPS the key is the only boundary — binding ``0.0.0.0`` with no key
-    would expose an unauthenticated control surface. Desktop (127.0.0.1) needs
-    no key to bind. Called at the bind site before uvicorn starts.
+    A non-loopback bind needs both an explicit remote-access opt-in
+    (``JARVIS_BIND_HOST`` set to that host, or ``remote_access=True``) and a
+    control key. A key alone is not permission to listen on every interface.
+    Desktop (127.0.0.1) needs neither.
     """
-    if host and host not in _LOOPBACK_HOSTS and not key:
+    if not host or host in _LOOPBACK_HOSTS:
+        return
+    if remote_access is None:
+        import os
+
+        opted = (os.environ.get("JARVIS_BIND_HOST") or "").strip()
+        remote_access = bool(opted) and opted == host
+    if not remote_access or not key:
         raise RuntimeError(
-            "Refusing to bind the Jarvis Control API to a non-loopback address "
-            f"({host!r}) without a control key. The API key is the security "
-            "boundary on a VPS — generate one first (control_key.ensure_control_key)."
+            "Refusing to bind the control API to a non-loopback address "
+            f"({host!r}). Remote access must be explicit (JARVIS_BIND_HOST) "
+            "and authenticated with a control key."
         )

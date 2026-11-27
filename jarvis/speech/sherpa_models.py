@@ -76,6 +76,10 @@ def _extract_archive(archive: Path, staging: Path) -> None:
         try:
             tf.extractall(unpacked, filter="data")
         except TypeError:  # pragma: no cover — Python without the filter arg
+            for member in tf.getmembers():
+                name = member.name.replace("\\", "/")
+                if name.startswith("/") or ".." in name.split("/"):
+                    raise ValueError(f"unsafe path in model archive: {member.name}")
             tf.extractall(unpacked)  # noqa: S202
     entries = [p for p in unpacked.iterdir() if not p.name.startswith(".")]
     root = entries[0] if len(entries) == 1 and entries[0].is_dir() else unpacked

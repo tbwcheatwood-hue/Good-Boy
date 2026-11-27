@@ -10769,10 +10769,19 @@ class BrainManager:
         keep = [entry for entry in deduped if entry[0] == self._switched_to == active]
         if tool_lead is not None:
             keep.append(tool_lead)
-        return self._keep_off_voice_key(
+        chain = self._keep_off_voice_key(
             deduped,
             keep=keep,
             needs_tools=bool(getattr(self, "_turn_needs_tools", False)),
+        )
+        # A local runtime that is loading, rate-limited, or down stays local.
+        # Crossing to a paid cloud provider requires an explicit opt-in.
+        from jarvis.reliability.local_failover import restrict_paid_fallback
+
+        return restrict_paid_fallback(
+            active,
+            chain,
+            allow_paid=bool(getattr(self._config.brain, "allow_paid_fallback", False)),
         )
 
     def _keep_off_voice_key(

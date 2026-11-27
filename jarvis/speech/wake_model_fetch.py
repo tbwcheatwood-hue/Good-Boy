@@ -144,6 +144,28 @@ def _http_get(url: str) -> bytes:
         return resp.content
 
 
+def _extract_zip_safely(archive: zipfile.ZipFile, dest: Path) -> None:
+    """Unpack a downloaded zip without letting a member escape ``dest``.
+
+    ``extractall`` without a path filter writes ``../`` members next to the
+    temp dir. Member names are checked first so the fallback on older Python
+    (no ``filter`` argument) is still confined.
+    """
+    root = dest.resolve()
+    for info in archive.infolist():
+        name = info.filename.replace("\\", "/")
+        parts = [part for part in name.split("/") if part not in ("", ".")]
+        if not parts or any(part == ".." for part in parts):
+            raise ValueError(f"unsafe path in wake-model archive: {info.filename}")
+        target = root.joinpath(*parts).resolve()
+        if target != root and root not in target.parents:
+            raise ValueError(f"unsafe path in wake-model archive: {info.filename}")
+    try:
+        archive.extractall(dest, filter="data")
+    except TypeError:
+        archive.extractall(dest)
+
+
 def ensure_vosk_model(
     language: str | None,
     *,
@@ -181,7 +203,7 @@ def ensure_vosk_model(
         with tempfile.TemporaryDirectory(dir=str(lang_dir.parent)) as td:
             tdir = Path(td)
             with zipfile.ZipFile(io.BytesIO(blob)) as zf:
-                zf.extractall(tdir)
+                _extract_zip_safely(zf, tdir)
             if not _lang_dir_has_model(tdir):
                 echo(f"wake model '{spec.zip_name}' extracted but not a valid model; skipping")
                 return None

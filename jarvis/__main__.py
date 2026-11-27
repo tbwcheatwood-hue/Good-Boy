@@ -92,7 +92,7 @@ if TYPE_CHECKING:
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="jarvis",
-        description="Personal Jarvis — turn your computer into an AI agent.",
+        description="Good Boy — turn your computer into an AI agent.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("--wizard", action="store_true", help="Restart the setup wizard.")
@@ -732,13 +732,13 @@ def _launch_detached() -> int:
     try:
         launch_desktop_detached()
     except OSError as exc:
-        print(f"Could not start Personal Jarvis: {exc}", file=sys.stderr)
+        print(f"Could not start Good Boy: {exc}", file=sys.stderr)
         print("Try `jarvis --foreground` to see what goes wrong.", file=sys.stderr)
         return 1
     if running:
-        print("Personal Jarvis is already running - bringing its window to the front.")
+        print("Good Boy is already running - bringing its window to the front.")
     else:
-        print("Starting Personal Jarvis... the window opens in a few seconds.")
+        print("Starting Good Boy... the window opens in a few seconds.")
     return 0
 
 
