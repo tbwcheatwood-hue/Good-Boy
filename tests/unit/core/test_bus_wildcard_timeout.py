@@ -47,23 +47,42 @@ async def test_wedged_wildcard_subscriber_does_not_block_publish(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_typed_subscriber_is_not_capped(monkeypatch):
-    # Typed subscribers may legitimately run longer than the wildcard cap
-    # (e.g. the TTS announcement handler awaits audio playback). They are
-    # deliberately NOT timed out.
-    monkeypatch.setattr(bus_mod, "_WILDCARD_HANDLER_TIMEOUT_S", 0.05)
+async def test_typed_subscriber_is_not_cancelled_when_publish_returns(monkeypatch):
+    # Playback handlers may outlive publish. publish must return without
+    # waiting them out, and it must not cancel them.
+    monkeypatch.setattr(bus_mod, "_PUBLISH_JOIN_S", 0.05)
     bus = EventBus()
-
     completed = asyncio.Event()
 
     async def slow_typed(event: Event) -> None:
-        await asyncio.sleep(0.2)  # longer than the wildcard cap, but typed
+        await asyncio.sleep(0.2)
         completed.set()
 
     bus.subscribe(Event, slow_typed)
+    await asyncio.wait_for(bus.publish(Event()), timeout=0.5)
+    assert not completed.is_set()
+    await asyncio.wait_for(completed.wait(), timeout=1.0)
 
-    await asyncio.wait_for(bus.publish(Event()), timeout=1.0)
-    assert completed.is_set()  # ran to completion, was not cut at 0.05 s
+
+@pytest.mark.asyncio
+async def test_stalled_subscriber_does_not_delay_healthy_ones(monkeypatch):
+    monkeypatch.setattr(bus_mod, "_PUBLISH_JOIN_S", 0.05)
+    bus = EventBus()
+    seen: list[str] = []
+
+    async def stalled(event: Event) -> None:
+        await asyncio.sleep(2.0)
+
+    async def healthy(event: Event) -> None:
+        seen.append(type(event).__name__)
+
+    bus.subscribe(Event, stalled)
+    bus.subscribe(Event, healthy)
+    started = asyncio.get_event_loop().time()
+    await bus.publish(Event())
+    elapsed = asyncio.get_event_loop().time() - started
+    assert elapsed < 0.5
+    assert seen == ["Event"]
 
 
 @pytest.mark.asyncio

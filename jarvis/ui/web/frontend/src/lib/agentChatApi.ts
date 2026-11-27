@@ -82,6 +82,12 @@ export interface AgentChatProvider {
 export interface AgentChatCatalog {
   providers: AgentChatProvider[];
   default_cwd: string;
+  /**
+   * The folder this catalog could actually open. When the remembered path
+   * is not a directory, this is the surface's own workspace instead.
+   * Absent on an older backend.
+   */
+  working_cwd?: string;
   shell: string;
   selection?: ChatSelection | null;
 }

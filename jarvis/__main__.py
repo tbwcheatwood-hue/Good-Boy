@@ -94,7 +94,11 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="jarvis",
         description="Good Boy — turn your computer into an AI agent.",
     )
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"Good Boy {__version__} (engine 3.1.1)",
+    )
     parser.add_argument("--wizard", action="store_true", help="Restart the setup wizard.")
     parser.add_argument("--check", action="store_true", help="Only show the hardware analysis.")
     parser.add_argument(

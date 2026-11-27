@@ -40,6 +40,10 @@ Sizes are estimates. Choose Nemotron for lower delay and Whisper for accuracy.
 Windows, macOS, and Linux can use compatible local packages. A GPU can
 speed up Whisper or a Brain model, but is not required for Nemotron or Piper.
 
+The Good Boy window itself listens on `http://127.0.0.1:47821`. That is
+`[ui].admin_api_port`. The ports below (11434 for Ollama, 8080 for llama.cpp,
+1234 for LM Studio) belong to the model server, not to Good Boy.
+
 ## Connect a Local Brain
 
 ### Ollama

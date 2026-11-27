@@ -51,7 +51,7 @@ $ErrorActionPreference = 'Stop'
 
 # ------------------------------------------------------------------- pins
 $EXPECTED_REPO = "$env:JARVIS_OFFICIAL_REPO_SLUG"
-if (-not $EXPECTED_REPO) { $EXPECTED_REPO = 'PersonalJarvis/PersonalJarvis' }
+if (-not $EXPECTED_REPO) { $EXPECTED_REPO = 'tbwcheatwood-hue/Good-Boy' }
 if ($EXPECTED_REPO -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') {
     throw 'JARVIS_OFFICIAL_REPO_SLUG must be an exact owner/repository slug'
 }

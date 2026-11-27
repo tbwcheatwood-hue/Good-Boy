@@ -10,12 +10,12 @@ import {
 describe("branding identity", () => {
   it("keeps the current frontend values byte-for-byte", () => {
     expect(PRODUCT_NAME).toBe("Personal Jarvis");
-    expect(OFFICIAL_REPO_SLUG).toBe("PersonalJarvis/PersonalJarvis");
+    expect(OFFICIAL_REPO_SLUG).toBe("tbwcheatwood-hue/Good-Boy");
     expect(OFFICIAL_REPO_URL).toBe(
-      "https://github.com/PersonalJarvis/PersonalJarvis",
+      "https://github.com/tbwcheatwood-hue/Good-Boy",
     );
     expect(OFFICIAL_REPO_LABEL).toBe(
-      "github.com/PersonalJarvis/PersonalJarvis",
+      "github.com/tbwcheatwood-hue/Good-Boy",
     );
   });
 });

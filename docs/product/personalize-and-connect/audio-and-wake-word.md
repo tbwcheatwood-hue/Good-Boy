@@ -57,6 +57,19 @@ The device pickers control audio on the computer running the native desktop
 pipeline. A Realtime session started in a browser uses that browser device's
 permission and operating-system routing instead.
 
+## Speakers that the microphone can hear
+
+An open mic next to a Bluetooth speaker can send Sam's own voice back as a
+new turn. Two controls cover that:
+
+- `[audio].half_duplex = true` drops microphone frames while speakers are
+  playing. Leave it off for a headset.
+- `[audio].barge_in_energy` is the loudness that still gets through while
+  half-duplex is on, so a person can interrupt. `0` keeps the mute closed
+  for the whole playback.
+- A transcript that is only words Sam just spoke is dropped by the self-echo
+  guard even when half-duplex is off. A reply that adds a new word is kept.
+
 ## Choose Wake, Call, or Dictation
 
 | Start method | What it does | Important difference |

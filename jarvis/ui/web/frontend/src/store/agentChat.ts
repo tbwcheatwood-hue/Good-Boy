@@ -330,6 +330,17 @@ function draftFromSession(session: AgentChatSession, prev: ComposerDraft): Compo
  * sessions can be open at the same time without sharing a connection.
  */
 /** `value` when the ladder offers it (or the ladder is unknown), else `fallback`. */
+/** The folder the composer should keep after a catalog read. */
+function folderForDraft(remembered: string, catalog: AgentChatCatalog): string {
+  // A path the server could not open comes back as a different working_cwd
+  // (the surface's own workspace). A path it accepted comes back unchanged,
+  // so a real project folder is left alone. An older backend omits the field.
+  if (catalog.working_cwd && remembered && catalog.working_cwd !== remembered) {
+    return catalog.working_cwd;
+  }
+  return remembered || catalog.default_cwd;
+}
+
 function onLadder(value: string, ladder: readonly string[], fallback: string): string {
   if (!value) return fallback;
   if (ladder.length === 0) return value;
@@ -579,6 +590,8 @@ export function createAgentChatStore(surface: AgentChatSurface, draftNamespace =
               cwd: draft.cwd || catalog.default_cwd,
             };
           }
+          const cwd = folderForDraft(draft.cwd, catalog);
+          if (cwd !== draft.cwd) draft = { ...draft, cwd };
           if (draft !== st.draft) {
             set({ draft });
             if (surface !== "jarvis" || !sessionId) writeDraft(DRAFT_KEY, draft);

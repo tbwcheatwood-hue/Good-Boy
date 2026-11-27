@@ -415,7 +415,11 @@ def _validate_cwd(raw: str | None) -> str | None:
         return None
     p = Path(os.path.expanduser(text))
     if not p.is_dir():
-        raise HTTPException(status_code=400, detail=f"Not a folder: {text}")
+        # A remembered folder from another machine, or one that was removed,
+        # must not fail the whole chat. Callers fall back to the surface's
+        # own workspace, which is created on first use.
+        log.info("chat folder %s is not a directory; using the default workspace", text)
+        return None
     return str(p.resolve())
 
 
@@ -459,6 +463,7 @@ async def get_catalog(
         if agent_accounts.resolve(account_id) is None:
             raise HTTPException(status_code=400, detail="Unknown subscription account")
     folder = _validate_cwd(cwd)
+    working = folder or svc.default_cwd(surface)
     with cli_catalog_scope(
         account_id=account_id,
         cwd=Path(folder) if folder else None,
@@ -472,6 +477,7 @@ async def get_catalog(
     return {
         "providers": rows,
         "default_cwd": svc.default_cwd(surface),
+        "working_cwd": working,
         "shell": shell_label(),
         "selection": (
             selection.to_dict()

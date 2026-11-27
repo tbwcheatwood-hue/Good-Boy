@@ -791,6 +791,22 @@ class AgentChatService:
 
     # ------------------------------------------------------------ sessions
 
+    def _ensure_folder(self, session: AgentChatSession) -> AgentChatSession:
+        """Point a chat whose folder is gone at the surface's own workspace.
+
+        The composer remembers a folder in the browser. One left behind by
+        another install, or a checkout that was moved, is not a directory on
+        this machine. A turn still has to start somewhere, and that somewhere
+        is the same folder a brand-new chat would get.
+        """
+        text = (session.cwd or "").strip()
+        if text and Path(text).expanduser().is_dir():
+            return session
+        repaired = self.default_cwd(session.surface)
+        updated = self.store.update_session(session.session_id, cwd=repaired)
+        log.info("chat %s had no folder; continuing in %s", session.session_id, repaired)
+        return updated or replace(session, cwd=repaired)
+
     def default_cwd(self, surface: str = DEFAULT_SURFACE) -> str:
         """Where a new ``surface`` session starts when nobody picked a folder.
 
@@ -1139,6 +1155,7 @@ class AgentChatService:
             raise NoSuchSession(session_id)
         if session.surface == "society":
             session = await self.bind_society_session(session_id, routine_run=routine_run)
+        session = self._ensure_folder(session)
         selected_runner = None
         if session.surface == "jarvis":
             from jarvis.core.task_agent import subscription_seat_off_loop

@@ -41,6 +41,10 @@ Handler = Callable[[Event], Awaitable[None]]
 # generous enough that no healthy local observer is ever cut, yet far below the
 # voice idle-timeout so a genuine wedge can never reach it.
 _WILDCARD_HANDLER_TIMEOUT_S = 5.0
+# publish() waits only this long. Handlers still running are left on the
+# loop so a slow observer cannot stall the voice or inference publisher.
+# Typed handlers are not cancelled: playback may outlive the publish call.
+_PUBLISH_JOIN_S = 0.15
 
 
 class EventBus:
@@ -53,6 +57,7 @@ class EventBus:
         # lock cannot cover both. This lock is held only around the list
         # mutation and the snapshot copy, never across an await.
         self._handlers_lock = threading.Lock()
+        self._detached: set[asyncio.Task[None]] = set()
 
     def subscribe(self, event_type: type[E], handler: Callable[[E], Awaitable[None]]) -> None:
         """Register a handler for a specific event type."""
@@ -93,18 +98,27 @@ class EventBus:
         if not typed and not wildcard:
             return
 
-        # Parallel dispatch; collect exceptions but do not propagate. Wildcard
-        # (observer/fan-out) handlers get a hard timeout so a wedged one cannot
-        # freeze the bus — and with it the voice/Computer-Use dispatch paths
-        # (AP-18, BUG-CU-STALL). Typed handlers are awaited uncapped on purpose.
-        results = await asyncio.gather(
-            *(self._safe_dispatch(h, event) for h in typed),
-            *(self._safe_dispatch(h, event, timeout_s=_WILDCARD_HANDLER_TIMEOUT_S)
-              for h in wildcard),
-            return_exceptions=True,
+        # Each handler is its own task. publish returns once every handler
+        # has finished or _PUBLISH_JOIN_S has passed, whichever comes first.
+        # A subscriber that sleeps, logs, or waits on a socket cannot hold
+        # the publisher. Wildcard handlers still time out. Typed handlers
+        # keep running after the join so playback is not cut off.
+        tasks = [
+            asyncio.create_task(self._safe_dispatch(handler, event))
+            for handler in typed
+        ]
+        tasks.extend(
+            asyncio.create_task(
+                self._safe_dispatch(
+                    handler, event, timeout_s=_WILDCARD_HANDLER_TIMEOUT_S
+                )
+            )
+            for handler in wildcard
         )
-        # Exceptions are logged in _safe_dispatch — results here only for completeness
-        _ = results
+        _done, pending = await asyncio.wait(tasks, timeout=_PUBLISH_JOIN_S)
+        for task in pending:
+            self._detached.add(task)
+            task.add_done_callback(self._detached.discard)
 
     @staticmethod
     async def _safe_dispatch(

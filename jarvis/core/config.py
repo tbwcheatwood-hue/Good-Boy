@@ -2126,6 +2126,13 @@ class AudioConfig(BaseModel):
         ),
     )
     echo_cancellation: bool = True
+    # Drop microphone frames while speakers are playing. Off by default so a
+    # headset can barge in. Turn it on for an open mic next to a speaker
+    # (a Bluetooth speaker, a phone, a Google Mini) that leaks TTS back in.
+    half_duplex: bool = False
+    # When half_duplex is on, a frame at least this loud is still accepted so
+    # the person can interrupt. 0 keeps the mute closed for the whole playback.
+    barge_in_energy: float = 0.0
     sample_rate: int = 16000
     frame_ms: int = 10
 

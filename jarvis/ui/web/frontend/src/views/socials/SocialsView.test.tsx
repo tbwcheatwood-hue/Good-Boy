@@ -60,7 +60,7 @@ const GITHUB_REPO = {
   id: "g1",
   platform: "github",
   label: "GitHub (Repo)",
-  url: "https://github.com/PersonalJarvis/PersonalJarvis",
+  url: "https://github.com/tbwcheatwood-hue/Good-Boy",
   enabled: true,
   order: 1,
 };

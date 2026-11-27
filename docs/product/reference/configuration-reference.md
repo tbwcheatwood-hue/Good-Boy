@@ -92,6 +92,15 @@ the save result and the apply result when diagnosing a mismatch. Do not paste
 credentials or complete environment dumps into bug reports; report only the
 source layer, non-secret value, and status fields involved.
 
+## Listen port
+
+The HTTP server and its WebSocket bind to `127.0.0.1` on port **47821**
+(`[ui].admin_api_port` in `jarvis/core/config.py`). Headless Linux uses that
+same port. Override it in `jarvis.toml` under `[ui]` as `admin_api_port`, or
+by starting the process with the host and port the launcher already reads
+from the config. A non-loopback host also needs `JARVIS_BIND_HOST` set to
+that host and a control key.
+
 ## Defaults and Current Values
 
 The installed typed schema defines defaults. Omitting a field uses its default

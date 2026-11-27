@@ -131,7 +131,7 @@ def version() -> None:
     """Print the jarvisctl version."""
     from jarvis import __version__
 
-    typer.echo(f"jarvisctl (Good Boy {__version__})")
+    typer.echo(f"jarvisctl (Good Boy {__version__}, engine 3.1.1)")
 
 
 @app.command()

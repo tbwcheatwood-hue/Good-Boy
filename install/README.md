@@ -7,12 +7,12 @@ never read these files; they just paste the URL into their shell.
 
 ```powershell
 # Windows (PowerShell)
-irm https://raw.githubusercontent.com/PersonalJarvis/PersonalJarvis/main/install/install.ps1 | iex
+irm https://raw.githubusercontent.com/tbwcheatwood-hue/Good-Boy/main/install/install.ps1 | iex
 ```
 
 ```bash
 # macOS / Linux
-curl -fsSL https://raw.githubusercontent.com/PersonalJarvis/PersonalJarvis/main/install/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tbwcheatwood-hue/Good-Boy/main/install/install.sh | bash
 ```
 
 When Python 3.11+ and Git are already present, the installer is fully
@@ -146,7 +146,7 @@ shell and PowerShell version. The safest pattern for ad-hoc testing is to
 clone manually and call `installer.py` directly:
 
 ```bash
-git clone https://github.com/PersonalJarvis/PersonalJarvis ~/.personal-jarvis
+git clone https://github.com/tbwcheatwood-hue/Good-Boy ~/.personal-jarvis
 cd ~/.personal-jarvis && python -m venv .venv
 . .venv/bin/activate           # Windows: .\.venv\Scripts\Activate.ps1
 pip install rich packaging

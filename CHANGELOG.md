@@ -11,6 +11,23 @@ versioning per [SemVer](https://semver.org/).
 
 ---
 
+## [Good Boy 1.2.0] — 2026-11-27
+
+The release number is 1.2.0. The engine lineage constant stays 3.1.1 so the cut from the upstream tree is still visible. Install paths, the keyring service, and `jarvis.toml` are unchanged.
+
+### Fixed
+
+- `filelock` is a base dependency (it already was, in `pyproject.toml` and `requirements.txt`). SOUL edits import it directly, so a base install has it without a second manual install.
+- A new workspace gets Sam's personality seed: identity, tone, limits, and an empty Calibration block the person can still edit. An existing SOUL.md is not overwritten.
+- The default clone target is `https://github.com/tbwcheatwood-hue/Good-Boy`. `jarvis --version` prints Good Boy 1.2.0 (engine 3.1.1).
+- Docs that named port 8442 now name 47821, which is `[ui].admin_api_port`.
+- `EventBus.publish` returns without waiting out a slow subscriber. Wildcard handlers still time out. Typed handlers are not cancelled, so playback can finish after the publisher has moved on.
+- Context estimates use tiktoken when it is installed, and a 3-character conservative count otherwise. Compaction drops a tool call together with its tool results.
+- `[audio].half_duplex` drops microphone frames while speakers are playing. `[audio].barge_in_energy` keeps a loud interruption.
+- Python, JavaScript, and shell deliverables run in a temporary directory with a timeout and a stripped environment before they count as complete.
+
+---
+
 ## [Good Boy 1.1.0] — 2026-11-27
 
 Phase 2 hardening on the 1.0.0 tree. Working subsystems were not rewritten.

@@ -15170,6 +15170,19 @@ class SpeechPipeline:
             yield chunk
 
     def _should_drop_session_input(self, chunk: AudioChunk) -> bool:
+        audio = getattr(getattr(self, "_config", None), "audio", None)
+        if getattr(audio, "half_duplex", False):
+            from jarvis.audio.level_tap import playback_active
+            from jarvis.reliability.playback_gate import drop_mic_during_playback
+
+            energy = float(getattr(chunk, "rms", 0.0) or 0.0)
+            if drop_mic_during_playback(
+                half_duplex=True,
+                playback=playback_active(),
+                energy=energy,
+                barge_in_energy=float(getattr(audio, "barge_in_energy", 0.0) or 0.0),
+            ):
+                return True
         until_ns = getattr(self, "_input_suppressed_until_ns", 0)
         if until_ns <= 0:
             return False

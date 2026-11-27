@@ -80,6 +80,6 @@ describe("DocsOverview", () => {
     expect(selected).toEqual(["architecture-overview"]);
 
     fireEvent.click(screen.getByRole("link", { name: /view on github/i }));
-    expect(openSpy).toHaveBeenCalledWith("https://github.com/PersonalJarvis/PersonalJarvis/tree/main/docs");
+    expect(openSpy).toHaveBeenCalledWith("https://github.com/tbwcheatwood-hue/Good-Boy/tree/main/docs");
   });
 });

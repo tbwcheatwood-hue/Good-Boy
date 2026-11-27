@@ -160,6 +160,62 @@ describe("agent-chat store surfaces", () => {
     expect(draft.permissionMode).toBe("ask");
     expect(draft.buildMode).toBe("ask");
     expect(draft.effort).toBe("high");
+    // No working_cwd (an older backend): the remembered folder stays.
+    expect(draft.cwd).toBe("C:\\ide");
+  });
+
+  it("replaces a remembered folder the server could not open", async () => {
+    window.localStorage.setItem(
+      draftKey("jarvis"),
+      JSON.stringify({
+        provider: "antigravity",
+        model: "",
+        effort: "high",
+        permissionMode: "ask",
+        buildMode: "ask",
+        cwd: "/tmp/missing-checkout",
+      }),
+    );
+    const modes = ["ask", "accept-edits", "plan", "bypass"].map((id) => ({ id, label: id, description: "" }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string) => {
+        const url = String(input);
+        const reply = (data: unknown) => new Response(JSON.stringify(data), { status: 200 });
+        if (url.startsWith("/api/agent-chat/catalog")) {
+          return reply({
+            providers: [
+              {
+                id: "antigravity",
+                label: "Antigravity",
+                family: "antigravity",
+                runner: "agy-cli",
+                models_source: "curated",
+                curated_models: [],
+                default_model: "",
+                keyless: false,
+                native_resume: true,
+                effort_levels: ["low", "medium", "high"],
+                default_effort: "medium",
+                cli_installed: true,
+                permission_modes: modes,
+                default_permission_mode: "ask",
+              },
+            ],
+            default_cwd: "/tmp/chat-workspace",
+            working_cwd: "/tmp/chat-workspace",
+            shell: "bash",
+          });
+        }
+        if (url.startsWith("/api/jarvis-agent/status")) return reply({ mapping: [] });
+        if (url.startsWith("/api/providers/")) return reply({ models: [] });
+        return new Response(null, { status: 404 });
+      }),
+    );
+    const store = createAgentChatStore("jarvis");
+    await store.getState().loadCatalog();
+    expect(store.getState().draft.cwd).toBe("/tmp/chat-workspace");
+    expect(JSON.parse(window.localStorage.getItem(draftKey("jarvis")) ?? "{}").cwd).toBe("/tmp/chat-workspace");
   });
 
   it("paints the last catalog at once and keeps it across a new chat while it refreshes", async () => {

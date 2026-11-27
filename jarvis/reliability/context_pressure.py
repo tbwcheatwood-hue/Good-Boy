@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-_CHARS_PER_TOKEN = 4
+_CHARS_PER_TOKEN = 3
 _DEFAULT_SATURATION = 0.85
 _SHORT_NOTE = (
     "[scratchpad] Earlier turns were compacted to fit the context window. "
@@ -54,10 +54,34 @@ def _text(message: Any) -> str:
     return "" if content is None else str(content)
 
 
-def estimate_tokens(messages: Sequence[Any], system_text: str = "") -> int:
-    """Cheap character estimate. Deterministic, no tokenizer dependency."""
-    body = system_text + "".join(_text(message) for message in messages)
-    return max(1, (len(body) + _CHARS_PER_TOKEN - 1) // _CHARS_PER_TOKEN)
+def _body(messages: Sequence[Any], system_text: str) -> str:
+    return system_text + "".join(_text(message) for message in messages)
+
+
+def estimate_tokens(
+    messages: Sequence[Any], system_text: str = "", *, model: str = ""
+) -> int:
+    """Token estimate. Uses tiktoken when it is installed, else a conservative count.
+
+    Local GGUF models do not share one tokenizer. The character fallback uses
+    3 characters per token, which over-counts English and so stays under a
+    small context window instead of overflowing it. ``model`` is accepted so
+    a caller can name the model; unknown ids still use cl100k when tiktoken
+    is present.
+    """
+    _ = model
+    body = _body(messages, system_text)
+    if not body:
+        return 1
+    try:
+        import tiktoken
+
+        encoding = tiktoken.get_encoding("cl100k_base")
+        counted = len(encoding.encode(body))
+        # Quantized local models tokenize less efficiently than this encoding.
+        return max(1, int(counted * 1.15) + 1)
+    except Exception:  # noqa: BLE001 — missing tokenizer must not break a turn
+        return max(1, (len(body) + _CHARS_PER_TOKEN - 1) // _CHARS_PER_TOKEN)
 
 
 def _protected(message: Any) -> bool:
@@ -79,6 +103,23 @@ def _clone_with_content(template: Any, content: str) -> Any:
     return {"role": role if role == "system" else "user", "content": content}
 
 
+def _groups(items: list[Any]) -> list[list[Any]]:
+    """Keep an assistant tool call with the tool results that follow it."""
+    groups: list[list[Any]] = []
+    index = 0
+    while index < len(items):
+        if _role(items[index]) == "assistant":
+            end = index + 1
+            while end < len(items) and _role(items[end]) == "tool":
+                end += 1
+            groups.append(items[index:end])
+            index = end
+            continue
+        groups.append([items[index]])
+        index += 1
+    return groups
+
+
 def compact_messages(
     messages: Sequence[Any],
     *,
@@ -96,27 +137,35 @@ def compact_messages(
     items = list(messages)
     if context_window <= 0 or not items:
         return items
+    groups = _groups(items)
+
+    def flat() -> list[Any]:
+        return [message for group in groups for message in group]
+
     budget = max(1, int(context_window * saturation))
-    if estimate_tokens(items, system_text) <= budget:
-        return items
+    if estimate_tokens(flat(), system_text) <= budget:
+        return flat()
 
     dropped: list[str] = []
-    # Walk from the oldest droppable message. Never drop the last message.
-    while estimate_tokens(items, system_text) > budget and len(items) > 1:
+    # Walk from the oldest droppable group. Never drop the last group.
+    # A tool call and its results drop together so a result is not left
+    # without the call that produced it.
+    while estimate_tokens(flat(), system_text) > budget and len(groups) > 1:
         drop_at = next(
             (
                 index
-                for index, message in enumerate(items[:-1])
-                if not _protected(message)
+                for index, group in enumerate(groups[:-1])
+                if not any(_protected(message) for message in group)
             ),
             None,
         )
         if drop_at is None:
             break
-        snippet = " ".join(_text(items[drop_at]).split())[:160]
+        snippet = " ".join(_text(groups[drop_at][0]).split())[:160]
         if snippet:
             dropped.append(snippet)
-        del items[drop_at]
+        del groups[drop_at]
+    items = flat()
 
     if dropped:
         note = (

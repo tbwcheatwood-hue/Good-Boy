@@ -745,6 +745,37 @@ def test_the_jarvis_chat_starts_in_its_own_folder_not_the_whole_profile(
     assert session.cwd == str(workspace)
 
 
+def test_a_remembered_folder_that_is_gone_is_replaced(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A path left by another install must not be the folder a turn runs in."""
+    workspace = tmp_path / "chat-workspace"
+    project = tmp_path / "project"
+    project.mkdir()
+    monkeypatch.setattr("jarvis.core.paths.chat_workspace_dir", lambda: workspace)
+    svc = AgentChatService(AgentChatStore(tmp_path / "db.sqlite"), default_cwd=lambda: str(tmp_path / "home"))
+
+    gone = svc.create_session(
+        provider="claude-api", surface="jarvis", cwd=str(tmp_path / "missing-checkout")
+    )
+    fixed = svc._ensure_folder(gone)
+    assert fixed.cwd == str(workspace)
+    assert workspace.is_dir()
+    assert svc.store.get_session(gone.session_id).cwd == str(workspace)
+
+    kept = svc.create_session(provider="claude-api", surface="jarvis", cwd=str(project))
+    assert svc._ensure_folder(kept).cwd == str(project)
+
+
+def test_missing_chat_folder_is_not_an_http_error(tmp_path: Path) -> None:
+    from jarvis.ui.web.agent_chat_routes import _validate_cwd
+
+    assert _validate_cwd(str(tmp_path)) == str(tmp_path.resolve())
+    assert _validate_cwd(str(tmp_path / "nope")) is None
+    assert _validate_cwd("  ") is None
+    assert _validate_cwd(None) is None
+
+
 def test_an_uncreatable_workspace_falls_back_instead_of_failing_the_chat(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
