@@ -10,6 +10,7 @@ Can be swapped for a Redis bus later when running multi-process.
 from __future__ import annotations
 
 import asyncio
+import threading
 from collections import defaultdict
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
@@ -48,15 +49,20 @@ class EventBus:
     def __init__(self) -> None:
         self._subscribers: dict[type[Event], list[Handler]] = defaultdict(list)
         self._wildcard_subscribers: list[Handler] = []
-        self._lock = asyncio.Lock()
+        # subscribe() is synchronous and publish() is async, so an asyncio
+        # lock cannot cover both. This lock is held only around the list
+        # mutation and the snapshot copy, never across an await.
+        self._handlers_lock = threading.Lock()
 
     def subscribe(self, event_type: type[E], handler: Callable[[E], Awaitable[None]]) -> None:
         """Register a handler for a specific event type."""
-        self._subscribers[event_type].append(handler)  # type: ignore[arg-type]
+        with self._handlers_lock:
+            self._subscribers[event_type].append(handler)  # type: ignore[arg-type]
 
     def subscribe_all(self, handler: Handler) -> None:
         """Register a handler that receives EVERY event — e.g. flight recorder or metrics."""
-        self._wildcard_subscribers.append(handler)
+        with self._handlers_lock:
+            self._wildcard_subscribers.append(handler)
 
     def unsubscribe_all(self, handler: Handler) -> None:
         """Remove a wildcard handler registered via subscribe_all (no-op if absent).
@@ -64,13 +70,15 @@ class EventBus:
         Symmetric to subscribe_all — short-lived wildcard observers (e.g. a
         WebSocket that lives only while a view is open) must be able to detach,
         or _wildcard_subscribers grows a dead handler per connect/disconnect."""
-        if handler in self._wildcard_subscribers:
-            self._wildcard_subscribers.remove(handler)
+        with self._handlers_lock:
+            if handler in self._wildcard_subscribers:
+                self._wildcard_subscribers.remove(handler)
 
     def unsubscribe(self, event_type: type[E], handler: Callable[[E], Awaitable[None]]) -> None:
-        handlers = self._subscribers.get(event_type)
-        if handlers and handler in handlers:  # type: ignore[operator]
-            handlers.remove(handler)  # type: ignore[arg-type]
+        with self._handlers_lock:
+            handlers = self._subscribers.get(event_type)
+            if handlers and handler in handlers:  # type: ignore[operator]
+                handlers.remove(handler)  # type: ignore[arg-type]
 
     async def publish(self, event: Event) -> None:
         """Deliver an event in parallel to all matching subscribers.
@@ -79,8 +87,9 @@ class EventBus:
         subscriber must never block the pipeline.
         """
         event_type = type(event)
-        typed: list[Handler] = list(self._subscribers.get(event_type, []))
-        wildcard: list[Handler] = list(self._wildcard_subscribers)
+        with self._handlers_lock:
+            typed: list[Handler] = list(self._subscribers.get(event_type, []))
+            wildcard: list[Handler] = list(self._wildcard_subscribers)
         if not typed and not wildcard:
             return
 

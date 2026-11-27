@@ -13,6 +13,10 @@ from typing import Any
 
 _CHARS_PER_TOKEN = 4
 _DEFAULT_SATURATION = 0.85
+_SHORT_NOTE = (
+    "[scratchpad] Earlier turns were compacted to fit the context window. "
+    "Security and system rules were kept verbatim."
+)
 _PROTECTED_MARKERS = (
     "risk tier",
     "risk-tier",
@@ -121,4 +125,12 @@ def compact_messages(
             "verbatim. Dropped turns, oldest first: " + " | ".join(dropped[:8])
         )
         items.insert(0, _clone_with_content(items[0], note))
+        # The note is inserted after the drop loop. If the excerpts themselves
+        # push a small window back over the budget, keep a one-line marker.
+        # If even that marker does not fit, omit it: the protected messages
+        # already consumed the window, and adding text would only make it worse.
+        if estimate_tokens(items, system_text) > budget:
+            items[0] = _clone_with_content(items[0], _SHORT_NOTE)
+        if estimate_tokens(items, system_text) > budget:
+            del items[0]
     return items

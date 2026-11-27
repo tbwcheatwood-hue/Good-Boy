@@ -8,7 +8,7 @@ This is not a line-by-line reading of every file in an 11,000-file tree. The rev
 
 **Needs Hardening.**
 
-Not blocking for a local desktop session that never installs Ollama from inside the app and never downloads a wake model. Not production-ready while the Linux local-brain installer still downloads and executes an unpinned remote script, and while several advertised edges (phantom-transcript drop, critic ping-pong breaker, full rebrand) are only partial.
+Not blocking for a local desktop session. The Linux install script is now checksum-pinned. Still open: the Windows Ollama exe is unhashed, typed bus handlers can stall a publisher, and the display name does not match the frozen install identity.
 
 Strengths that held up under reading:
 
@@ -20,19 +20,19 @@ Strengths that held up under reading:
 
 Top risks:
 
-- Linux Ollama setup downloads `https://ollama.com/install.sh` and runs it (`jarvis/brain/ollama_runtime.py:61`, `jarvis/brain/ollama_runtime.py:840`).
-- Typed EventBus handlers have no timeout. One slow subscriber stalls every publisher (`jarvis/core/bus.py:37`, `jarvis/core/bus.py:105`).
-- The 1.1.0 injection pattern, as first landed, would have killed missions for ordinary “read the API keys” prose. That pattern is tightened in this review.
+- The Linux Ollama script is now pinned. The Windows `OllamaSetup.exe` download is still executed without a checksum.
+- Typed EventBus handlers have no timeout. One slow subscriber stalls every publisher (`jarvis/core/bus.py`). That cap stays off because playback handlers await audio, and a regression test requires it.
+- The display name and the frozen install identity still disagree (CR-11).
 
 ## Findings
 
 ### HIGH — Unpinned remote script is executed to install Ollama
 
 - **ID:** CR-01
-- **Location:** `jarvis/brain/ollama_runtime.py:61`, `jarvis/brain/ollama_runtime.py:817`, `jarvis/realtime/local_server/install.py:726`
+- **Location:** `jarvis/brain/ollama_runtime.py` (`_LINUX_INSTALL_SCRIPT_SHA256`, `_install_linux`)
 - **Category:** Security
-- **Issue:** `_install_linux` downloads `https://ollama.com/install.sh` and runs it with `sh` when passwordless sudo is available. `_setup_local_brain` calls `ensure_runtime_blocking()`, which takes that path when the binary is missing. The bytes are not hashed. A change on that host becomes code execution during “set up local models.” Chat failover does not call this. The local-model install does.
-- **Fix:** Do not execute the script. Keep the existing honest refusal that tells the person to install Ollama themselves, or pin a checksum and refuse on mismatch. This was not patched: the install engine’s own comment says a local-model selection must not end in a manual terminal step, and there is no known-good hash in tree to pin. Ripping the call out would break that setup path.
+- **Issue:** `_install_linux` downloads `https://ollama.com/install.sh` and runs it with `sh` when passwordless sudo is available. `_setup_local_brain` calls `ensure_runtime_blocking()`, which takes that path when the binary is missing. The bytes were not hashed. A change on that host becomes code execution during “set up local models.” Chat failover does not call this. The local-model install does.
+- **Fix:** Applied. The script is hashed after download and deleted when the digest does not match the pin reviewed on 2026-11-27. The Windows `OllamaSetup.exe` download is still unpinned.
 
 ### HIGH — Wake-model zip could write outside the temp dir
 
@@ -64,7 +64,7 @@ Top risks:
 - **Location:** `jarvis/core/bus.py:37`, `jarvis/core/bus.py:91`, `jarvis/core/bus.py:105`
 - **Category:** Concurrency
 - **Issue:** Wildcard observers time out after 5 seconds. Typed subscribers are awaited with no cap, on purpose, because some of them play audio. A typed handler that blocks (a lock, a synchronous HTTP call, a stuck playback await) stalls `publish` for every other layer. `subscribe` / `unsubscribe` also mutate the handler list without the lock `publish` does not hold either. CPython’s GIL makes the list snapshot usually safe. A free-threaded build can tear it.
-- **Fix:** Give typed handlers a deadline except for an explicit allowlist (TTS). Take a `threading.Lock` around append, remove, and the snapshot copy. Not applied: the timeout exception list is load-bearing for voice and a wrong cap would cut off speech.
+- **Fix:** Typed handlers stay uncapped. `tests/unit/core/test_bus_wildcard_timeout.py` requires a slow typed subscriber to finish, because playback awaits audio. The list mutation is now under a `threading.Lock` shared with the publish snapshot (CR-13).
 
 ### MEDIUM — Critic ping-pong is capped, but the new breaker does not see it
 
@@ -72,7 +72,7 @@ Top risks:
 - **Location:** `jarvis/missions/critic/runner.py:588`, `jarvis/missions/kontrollierer/orchestrator.py:1620`, `jarvis/missions/kontrollierer/orchestrator.py:1966`
 - **Category:** Concurrency
 - **Issue:** Architect/developer revise loops stop at `MAX_CRITIC_LOOPS` (3). They cannot ping-pong forever. The 1.1.0 `FailureCircuit` only wraps the timeout / transient / auth retry branch. Two different critic objections still consume the full three iterations. That is a cap, not a “same mistake” breaker.
-- **Fix:** Fingerprint `correction_instruction` and stop on the second identical revise. Not applied in this pass; the existing cap already bounds the loop.
+- **Fix:** Applied. A second identical `correction_instruction` returns `EXHAUSTED` and logs the crew escalation. A different objection still consumes the three-iteration cap.
 
 ### MEDIUM — Sandbox delete could target the outputs root
 
@@ -88,7 +88,7 @@ Top risks:
 - **Location:** `jarvis/speech/sherpa_models.py:76`
 - **Category:** Security
 - **Issue:** `tarfile.extractall(..., filter="data")` is correct on current Python. The `TypeError` fallback used to extract with no filter. Parent-segment names are now rejected before that fallback. A symlink member whose name is innocent can still point outside the tree on a Python that lacks `filter`.
-- **Fix:** Partial. Name check applied. Full fix is to refuse the fallback and require a Python that supports `filter="data"`.
+- **Fix:** Applied for the fallback. Parent paths, symlinks, hard links, and anything that is not a regular file or directory are rejected before the unfiltered `extractall`. Current Python still uses `filter="data"`.
 
 ### MEDIUM — Context compaction can put the prompt back over the budget
 
@@ -96,7 +96,7 @@ Top risks:
 - **Location:** `jarvis/reliability/context_pressure.py` (scratchpad insert after the drop loop)
 - **Category:** Local AI
 - **Issue:** Protected system and security-rule messages are not evicted. After the drop loop, a scratchpad note is inserted and is not measured again. On a very small window that note can push the estimate back over 85%. Security text is not summarized away.
-- **Fix:** If the note itself exceeds the remaining budget, insert a one-line marker with no excerpts. Not applied.
+- **Fix:** Applied. A note that does not fit is replaced by a one-line marker. If that marker still does not fit, it is omitted.
 
 ### MEDIUM — Speaker-echo transcript filter is not on the hot path
 
@@ -104,7 +104,7 @@ Top risks:
 - **Location:** `jarvis/reliability/acoustic.py` (`phantom_transcript`); wake bar in `jarvis/plugins/wake/openwakeword_provider.py`
 - **Category:** Local AI
 - **Issue:** While speakers are active the wake score bar rises by 0.15. That part is wired. `phantom_transcript` correctly classifies “the mic heard the line TTS just spoke,” and a unit test covers it. Nothing in the speech pipeline calls it, so a phantom transcript can still become a turn.
-- **Fix:** Call `phantom_transcript` where a final transcript is accepted, with the last spoken line and `playback_active()`. Not applied; the accept site is inside the very large pipeline module and a wrong hook would drop real barge-in.
+- **Fix:** Not applied, and not needed as a second filter. `_looks_like_self_echo` already drops speaker echo on the final-transcript path (`jarvis/speech/pipeline.py`, `SelfEchoGuard`). `phantom_transcript` would also drop a short genuine answer that reuses the assistant's words (the case `test_user_answer_with_novel_word_is_kept` keeps). The wake score bar remains the acoustic half.
 
 ### MEDIUM — Brand and installer identity are split
 
@@ -127,7 +127,8 @@ Top risks:
 - **ID:** CR-13
 - **Location:** `jarvis/core/bus.py:53`
 - **Category:** Concurrency
-- **Issue:** See CR-05. Called out separately because a reconnect that forgets `unsubscribe_all` leaks a wildcard handler. The API to detach exists (`unsubscribe_all` at line 61). Call sites still have to use it.
+- **Issue:** Called out separately because a reconnect that forgets `unsubscribe_all` leaks a wildcard handler. The API to detach exists. Call sites still have to use it.
+- **Fix:** Applied for the race. `subscribe`, `unsubscribe`, and the publish snapshot share `threading.Lock`. Forgetting `unsubscribe_all` is still a caller bug.
 
 ## Stub and honesty matrix
 
@@ -157,7 +158,7 @@ Applied in the working tree, after the `Good-Boy-v1.1.0.zip` archive was built. 
 | CR-07 | `jarvis/missions/isolation/worktree.py`: refuse deleting the outputs root |
 | CR-08 | `jarvis/speech/sherpa_models.py`: reject `..` members before the unfiltered tar fallback |
 
-Not applied, with reason: CR-01 (no hash to pin, and the setup path is an explicit product behavior), CR-05 (voice handlers are intentionally uncapped), CR-06, CR-09, CR-10, CR-11.
+Not applied, with reason: CR-05 (typed handlers are intentionally uncapped; playback), CR-10 (`SelfEchoGuard` already covers the hot path, and the extra classifier would drop a real short answer), CR-11 (frozen install identity), CR-12 (the mask is already a mask). The Windows Ollama exe download is still unhashed.
 
 Command that passed after the patches:
 

@@ -30,6 +30,34 @@ class _Tool:
         self.schema = {"type": "object", "properties": properties}
 
 
+def test_scratchpad_stays_inside_a_small_window() -> None:
+    filler = [BrainMessage(role="user", content="x" * 400) for _ in range(4)]
+    latest = BrainMessage(role="user", content="status?")
+    window = 30
+    compacted = compact_messages([*filler, latest], context_window=window)
+    assert compacted[-1].content == "status?"
+    assert estimate_tokens(compacted) <= int(window * 0.85)
+
+
+def test_sherpa_fallback_rejects_links_and_parent_paths() -> None:
+    import tarfile
+
+    from jarvis.speech.sherpa_models import _unsafe_tar_member
+
+    link = tarfile.TarInfo("model/link")
+    link.type = tarfile.SYMTYPE
+    link.linkname = "/etc/passwd"
+    assert _unsafe_tar_member(link)
+
+    outside = tarfile.TarInfo("../outside.txt")
+    assert _unsafe_tar_member(outside)
+
+    regular = tarfile.TarInfo("model/encoder.onnx")
+    regular.type = tarfile.REGTYPE
+    regular.size = 4
+    assert _unsafe_tar_member(regular) is None
+
+
 def test_context_pressure_keeps_security_rules() -> None:
     security = BrainMessage(
         role="system",

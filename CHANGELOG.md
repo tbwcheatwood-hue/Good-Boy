@@ -35,6 +35,11 @@ Phase 2 hardening on the 1.0.0 tree. Working subsystems were not rewritten.
 - The injection scanner no longer treats ordinary documentation that says "read the API keys" as a critical exfiltration. Exporting `~/.ssh` or a private key still is.
 - A repaired tool call on the last retry is kept when it is valid.
 - Worktree removal refuses the mission outputs root itself.
+- The Linux Ollama installer runs `install.sh` only when its SHA-256 matches the pinned release. A changed script is deleted and refused.
+- A critic that repeats the same revise instruction stops on the second sighting. Different objections still use the existing three-iteration cap.
+- Downloaded sherpa archives reject links and special files on the Python fallback that lacks `filter="data"`.
+- Context compaction drops the scratchpad note when that note would push a small window back over the budget.
+- Event-bus subscribe and unsubscribe share a lock with the publish snapshot. Typed handlers stay uncapped so playback can finish.
 
 ### Changed
 

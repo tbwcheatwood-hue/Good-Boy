@@ -58,6 +58,22 @@ def _download_file(url: str, target: Path, *, timeout_s: float = 60.0) -> None:
                 fh.write(chunk)
 
 
+def _unsafe_tar_member(member: object) -> str | None:
+    """Reason a tar member must not be extracted, or None when it is a file or directory."""
+    name = str(getattr(member, "name", "")).replace("\\", "/")
+    if name.startswith("/") or ".." in name.split("/"):
+        return f"unsafe path in model archive: {name}"
+    issym = getattr(member, "issym", None)
+    islnk = getattr(member, "islnk", None)
+    isreg = getattr(member, "isreg", None)
+    isdir = getattr(member, "isdir", None)
+    if callable(issym) and (issym() or (callable(islnk) and islnk())):
+        return f"unsafe link in model archive: {name}"
+    if callable(isreg) and callable(isdir) and not isreg() and not isdir():
+        return f"unsafe member in model archive: {name}"
+    return None
+
+
 def _extract_archive(archive: Path, staging: Path) -> None:
     """Unpack a tar.bz2 into *staging*, stripping its single top-level directory.
 
@@ -77,9 +93,9 @@ def _extract_archive(archive: Path, staging: Path) -> None:
             tf.extractall(unpacked, filter="data")
         except TypeError:  # pragma: no cover — Python without the filter arg
             for member in tf.getmembers():
-                name = member.name.replace("\\", "/")
-                if name.startswith("/") or ".." in name.split("/"):
-                    raise ValueError(f"unsafe path in model archive: {member.name}")
+                reason = _unsafe_tar_member(member)
+                if reason is not None:
+                    raise ValueError(reason)
             tf.extractall(unpacked)  # noqa: S202
     entries = [p for p in unpacked.iterdir() if not p.name.startswith(".")]
     root = entries[0] if len(entries) == 1 and entries[0].is_dir() else unpacked

@@ -1619,6 +1619,9 @@ class Kontrollierer:
         from jarvis.reliability.crew import FailureCircuit
 
         failure_circuit = FailureCircuit(limit=1)
+        # Identical critic revise text stops on the second sighting. Distinct
+        # objections still run up to MAX_CRITIC_LOOPS.
+        revise_circuit = FailureCircuit(limit=1)
 
         for iteration in range(MAX_CRITIC_LOOPS):
             # Per-iteration: render reflections, spawn worker, capture diff+log
@@ -2258,11 +2261,20 @@ class Kontrollierer:
                 [i.evidence_ref for i in verdict.issues],
             )
 
+            instruction = verdict.correction_instruction or "address critic feedback"
+            if not revise_circuit.allow(instruction):
+                logger.warning(
+                    "Task %s: circuit breaker — %s",
+                    step.task_id,
+                    revise_circuit.escalation_message(instruction),
+                )
+                return TaskOutcome.EXHAUSTED
+
             # Publish WorkerCorrectionRequired
             await self._publish_correction(
                 mission_id=mission_id,
                 worker_id=spawn_result.worker_id,
-                instruction=verdict.correction_instruction or "address critic feedback",
+                instruction=instruction,
                 iteration=iteration,
                 next_model=(FRONTIER_MODEL if iteration + 1 >= 2 else "sonnet"),
             )

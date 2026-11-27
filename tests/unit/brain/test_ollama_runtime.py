@@ -159,6 +159,63 @@ def test_download_refuses_unofficial_urls(tmp_path: Path) -> None:
         ollama_runtime._download("https://evil.example/o.exe", tmp_path / "o.exe")
 
 
+def test_linux_refuses_a_script_whose_checksum_does_not_match(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        ollama_runtime.shutil,
+        "which",
+        lambda name: "/usr/bin/sudo" if name == "sudo" else "/bin/sh",
+    )
+    monkeypatch.setattr(
+        ollama_runtime.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout="", stderr=""),
+    )
+    monkeypatch.setattr(ollama_runtime, "_data_dir", lambda: tmp_path)
+
+    def _write(url: str, target: Path) -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("echo pwned\n", encoding="utf-8")
+
+    monkeypatch.setattr(ollama_runtime, "_download", _write)
+    ran: list[list[str]] = []
+    monkeypatch.setattr(ollama_runtime, "_run_command", lambda cmd, timeout: ran.append(cmd))
+    with pytest.raises(RuntimeError, match="checksum"):
+        ollama_runtime._install_linux()
+    assert ran == []
+    assert not (tmp_path / "downloads" / "ollama_install.sh").exists()
+
+
+def test_linux_runs_a_script_whose_checksum_matches(monkeypatch, tmp_path: Path) -> None:
+    import hashlib
+
+    body = b"echo pinned\n"
+    monkeypatch.setattr(
+        ollama_runtime, "_LINUX_INSTALL_SCRIPT_SHA256", hashlib.sha256(body).hexdigest()
+    )
+    monkeypatch.setattr(
+        ollama_runtime.shutil,
+        "which",
+        lambda name: "/usr/bin/sudo" if name == "sudo" else "/bin/sh",
+    )
+    monkeypatch.setattr(
+        ollama_runtime.subprocess,
+        "run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout="", stderr=""),
+    )
+    monkeypatch.setattr(ollama_runtime, "_data_dir", lambda: tmp_path)
+
+    def _write(url: str, target: Path) -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(body)
+
+    monkeypatch.setattr(ollama_runtime, "_download", _write)
+    ran: list[list[str]] = []
+    monkeypatch.setattr(ollama_runtime, "_run_command", lambda cmd, timeout: ran.append(cmd))
+    assert ollama_runtime._install_linux() == "install-script"
+    assert ran and ran[0][0] == "/bin/sh"
+    assert ran[0][1].endswith("ollama_install.sh")
+
+
 def test_linux_without_sudo_refuses_with_the_one_command(monkeypatch) -> None:
     """A hidden password prompt would hang the daemon thread forever; the
     honest refusal names the exact terminal command instead."""

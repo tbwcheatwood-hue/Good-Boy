@@ -59,6 +59,12 @@ _DOWNLOAD_TIMEOUT_S = 1800
 #: Official artifacts only — never a mirror.
 _WINDOWS_INSTALLER_URL = "https://ollama.com/download/OllamaSetup.exe"
 _LINUX_INSTALL_SCRIPT_URL = "https://ollama.com/install.sh"
+#: SHA-256 of https://ollama.com/install.sh as reviewed on 2026-11-27.
+#: A changed script is refused instead of executed. Update this only after
+#: reading the new bytes.
+_LINUX_INSTALL_SCRIPT_SHA256 = (
+    "17659c2456c9e65a3b11056b76da51774911cb822f47bf44f7f3ecc0c40528a8"
+)
 
 
 # ── Detection ────────────────────────────────────────────────────────────
@@ -736,6 +742,17 @@ def _run_command(cmd: list[str], *, timeout: int) -> None:
         raise RuntimeError(f"step failed (exit {result.returncode}): {' '.join(cmd[:2])}…")
 
 
+def _sha256_file(path: Path) -> str:
+    """Hash a downloaded installer before anything executes it."""
+    import hashlib
+
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _download(url: str, target: Path) -> None:
     """Stream an official artifact to disk (atomic: temp name + rename)."""
     if not url.startswith("https://ollama.com/"):
@@ -838,6 +855,14 @@ def _install_linux() -> str:
     _set("downloading", 5, "downloading the official install script")
     script = _data_dir() / "downloads" / "ollama_install.sh"
     _download(_LINUX_INSTALL_SCRIPT_URL, script)
+    digest = _sha256_file(script)
+    if digest != _LINUX_INSTALL_SCRIPT_SHA256:
+        script.unlink(missing_ok=True)
+        raise RuntimeError(
+            "Refusing to run the Ollama install script: its checksum does not "
+            "match the pinned release. Install Ollama from ollama.com/download, "
+            "then come back here."
+        )
     _set("installing", 45, "running the official Ollama install script")
     shell = shutil.which("sh") or "/bin/sh"
     _run_command([shell, str(script)], timeout=_WINGET_TIMEOUT_S)
